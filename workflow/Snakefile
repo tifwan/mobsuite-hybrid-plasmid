@@ -1,0 +1,153 @@
+### Title: Snakefile for MOB-suite on hybrid assemblies
+import pandas as pd
+import os
+from datetime import datetime
+import glob
+
+configfile: "config/config.yaml"
+
+# ---- isolate list ----------------------------------------------------------
+
+BASE_PATH     = config["base_path"]
+ASSEMBLY_DIR  = config["assembly_dir"]
+OUTPUT_DIR    = os.path.join(BASE_PATH, config["output_dir"])
+
+
+# Discover all assemblies (recursive) at parse time
+PATTERN    = os.path.join(ASSEMBLY_DIR, "**", "*.fna")
+ASSEMBLIES = glob.glob(PATTERN, recursive=True) # the file paths
+ISOLATES = [os.path.basename(os.path.dirname(path)) for path in ASSEMBLIES] # the isolate names
+# map each isolate name to its single assembly path
+isolate_path_dict = dict(zip(ISOLATES, ASSEMBLIES))
+
+RUN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+# Container applied to every rule unless overridden. Snakemake runs this through
+# Singularity/Apptainer when invoked with --use-singularity.
+# Swap the tag if you need a specific MOB-suite version.
+container: "docker://" + config["mob_image"]
+
+
+# ---- final targets ---------------------------------------------------------
+rule all:
+    input:
+        # per-isolate mob_recon completion (contig report is the anchor)
+        expand(OUTPUT_DIR + "/{isolate}/mob_recon/contig_report.txt",
+               isolate=ISOLATES),
+        # per-isolate renamed outputs (marker file)
+        expand(OUTPUT_DIR + "/{isolate}/{isolate}_renamed.done",
+               isolate=ISOLATES),
+        # combined typing report
+        OUTPUT_DIR + "/mob_typer.txt",
+        config["mob_db"] + "/clusters.txt"
+
+
+# ----mob_init----------------------------------------------------------------
+rule mob_init:
+    # One-time: download + initialize the MOB-suite database into a shared dir.
+    # All mob_recon jobs depend on this, so it runs exactly once before them.
+    output:
+        db_ready = config["mob_db"] + "/clusters.txt",
+    params:
+        db_dir = config["mob_db"],
+    log:
+        config["log_dir"] + "/mob_init_" + RUN_TIMESTAMP + ".log"
+    shell:
+        r"""
+        mkdir -p {params.db_dir}
+        mob_init -d {params.db_dir} > {log} 2>&1
+        """
+
+# ---- mob_recon -------------------------------------------------------------
+rule mob_recon:
+    # Run mob_recon on a hybrid assembly. -u uses the circularization status in
+    # the assembly headers. mob_recon writes contig_report.txt, chromosome.fasta,
+    # plasmid_*.fasta and mobtyper_results.txt into outdir.
+    input:
+        assembly = lambda wc: isolate_path_dict[wc.isolate],
+        db_ready = config["mob_db"] + "/clusters.txt",  
+    output:
+        contig_report = OUTPUT_DIR + "/{isolate}/mob_recon/contig_report.txt",
+        mobtyper      = touch(OUTPUT_DIR+ "/{isolate}/mob_recon/mobtyper_results.txt"),
+        chromosome    = OUTPUT_DIR + "/{isolate}/mob_recon/chromosome.fasta",
+    params:
+        outdir = OUTPUT_DIR + "/{isolate}/mob_recon",
+        prefix = "{isolate}",
+        mob_db = config["mob_db"],
+    log:
+        config["log_dir"] + "/{isolate}/mob_recon_" + RUN_TIMESTAMP + ".log",
+    shell:
+        """
+        mob_recon --infile {input.assembly} --outdir {params.outdir} -u  \
+            -d {params.mob_db} -s {params.prefix} --force > {log} 2>&1
+        """
+
+
+# ---- rename outputs --------------------------------------------------------
+rule rename_outputs:
+    # Prefix every plasmid + the chromosome with the isolate name and copy into
+    # output/<isolate>/. Filenames only (headers untouched).
+    #   plasmid_AA337.fasta   -> IMPALA_1000_plasmid_AA337.fasta
+    #   chromosome.fasta      -> IMPALA_1000_chromosome.fasta
+    input:
+        contig_report = OUTPUT_DIR + "/{isolate}/mob_recon/contig_report.txt",
+        chromosome    = OUTPUT_DIR + "/{isolate}/mob_recon/chromosome.fasta",
+    output:
+        marker = touch(OUTPUT_DIR + "/{isolate}/{isolate}_renamed.done"),
+    params:
+        recon_dir = OUTPUT_DIR + "/{isolate}/mob_recon",
+        out_dir   = OUTPUT_DIR + "/{isolate}",
+    log:
+        config["log_dir"] + "/{isolate}/rename_" + RUN_TIMESTAMP + ".log",
+    shell:
+        r"""
+        {{
+        set -euo pipefail
+
+        # chromosome
+        if [ -s "{input.chromosome}" ]; then
+            cp "{input.chromosome}" "{params.out_dir}/{wildcards.isolate}_chromosome.fasta"
+        fi
+
+        # all plasmids (no quality filtering)
+        shopt -s nullglob
+        for file in "{params.recon_dir}"/plasmid_*.fasta; do
+            base=$(basename "$file")          # plasmid_AA337.fasta
+            cp "$file" "{params.out_dir}/{wildcards.isolate}_${{base}}"
+        done
+        shopt -u nullglob
+
+        echo "Renamed outputs for {wildcards.isolate}"
+        }} > {log} 2>&1
+        """
+
+
+# ---- concatenate typing ----------------------------------------------------
+rule concatenate_mobtyper:
+    # Merge every isolate's mobtyper_results.txt into a single table, writing the
+    # header once. Empty files (isolates with no plasmids) are skipped safely.
+    input:
+        reports = expand(OUTPUT_DIR + "/{isolate}/mob_recon/mobtyper_results.txt",
+                         isolate=ISOLATES),
+    output:
+        combined = OUTPUT_DIR + "/mob_typer.txt",
+    log:
+        config["log_dir"] + "/concatenate_mobtyper_" + RUN_TIMESTAMP + ".log",
+    shell:
+        r"""
+        {{
+        set -euo pipefail
+        : > {output.combined}
+
+        # write the header from the first non-empty file
+        for f in {input.reports}; do
+            if [ -s "$f" ]; then
+                head -n 1 "$f" > {output.combined}
+                break
+            fi
+        done
+
+        # append all data rows (skip per-file headers); -q suppresses filenames
+        tail -n +2 -q {input.reports} >> {output.combined} || true
+        }} > {log} 2>&1
+        """

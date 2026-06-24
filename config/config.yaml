@@ -1,0 +1,20 @@
+# =============================================================================
+# Config for hybrid-only MOB-suite pipeline
+# =============================================================================
+
+# --- inputs ------------------------------------------------------------------
+base_path: "/nfs/turbo/umms-esnitkin/Project_MDHHS_genomics/Analysis/2026_Plasmid_analysis/2026_06_23_hybrid_mobsuite"
+# Root directory containing the hybrid assemblies
+assembly_dir: "/nfs/turbo/umms-esnitkin/Project_MDHHS_genomics/Sequence_data/assembly/hybrid/prokka/"
+
+
+# --- outputs -----------------------------------------------------------------
+output_dir: "output"
+log_dir: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026_06_23_hybrid_mobsuite/logs"
+
+# --- mobsuite database ------------------------------------------------------
+mob_db: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026_06_23_hybrid_mobsuite/database"
+# --- environment -------------------------------------------------------------
+# Docker image pulled and run via Singularity/Apptainer (snakemake --use-singularity)
+# Latest MOB-suite is 3.1.9; kbessonov also publishes 3.0.3.
+mob_image: "quay.io/biocontainers/mob_suite:3.1.9--pyhdfd78af_1"

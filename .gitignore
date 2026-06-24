@@ -1,0 +1,14 @@
+database/
+.snakemake/
+logs/
+slurm_out/
+slurm-*.out
+files.zip
+__pycache__/
+*.pyc
+*.fastq
+*.fastq.gz
+*.fasta
+*.fna
+*.bam
+*.bai

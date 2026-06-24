@@ -1,0 +1,16 @@
+# Fallback conda environment (use with: snakemake --use-conda)
+# Prefer the Docker/Singularity container for reproducibility; this is here in
+# case Singularity/Apptainer is unavailable on your system.
+#
+# To attach it to rules, add `conda: "envs/mob.yaml"` to each rule, or run with
+# --use-conda. The `container:` directive in the Snakefile takes precedence when
+# you run with --use-singularity.
+name: mob_suite
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - mob_suite=3.1.9
+  - blast
+  - mash
