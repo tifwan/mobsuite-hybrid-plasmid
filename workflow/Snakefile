@@ -39,6 +39,7 @@ rule all:
                isolate=ISOLATES),
         # combined typing report
         OUTPUT_DIR + "/mob_typer.txt",
+        OUTPUT_DIR + "/contig_reports.txt",
         config["mob_db"] + "/clusters.txt"
 
 
@@ -133,6 +134,36 @@ rule concatenate_mobtyper:
         combined = OUTPUT_DIR + "/mob_typer.txt",
     log:
         config["log_dir"] + "/concatenate_mobtyper_" + RUN_TIMESTAMP + ".log",
+    shell:
+        r"""
+        {{
+        set -euo pipefail
+        : > {output.combined}
+
+        # write the header from the first non-empty file
+        for f in {input.reports}; do
+            if [ -s "$f" ]; then
+                head -n 1 "$f" > {output.combined}
+                break
+            fi
+        done
+
+        # append all data rows (skip per-file headers); -q suppresses filenames
+        tail -n +2 -q {input.reports} >> {output.combined} || true
+        }} > {log} 2>&1
+        """
+        
+# ---- concatenate contig reports ----------------------------------------------------
+rule concatenate_contig_reports:
+    # Merge every isolate's contig_report.txt into a single table, writing the
+    # header once. Empty files (isolates with no plasmids) are skipped safely.
+    input:
+        reports = expand(OUTPUT_DIR + "/{isolate}/mob_recon/contig_report.txt",
+                         isolate=ISOLATES),
+    output:
+        combined = OUTPUT_DIR + "/contig_reports.txt",
+    log:
+        config["log_dir"] + "/concatenate_contig_reports_" + RUN_TIMESTAMP + ".log",
     shell:
         r"""
         {{
