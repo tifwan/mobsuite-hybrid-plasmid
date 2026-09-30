@@ -11,7 +11,7 @@ assembly_dir: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/20
 primary_cluster_dist = 0.06
 
 # --- outputs -----------------------------------------------------------------
-output_dir: "output"
+output_dir: "updated_db_output"
 log_dir: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-09-24_hybrid_mobsuite/mobsuite-hybrid-plasmid/logs"
 
 # --- taxonomy file for mob-cluster ------------------------------------------

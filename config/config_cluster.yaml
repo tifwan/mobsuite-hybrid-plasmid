@@ -7,15 +7,10 @@ base_path: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-
 # Root directory containing the hybrid assemblies
 assembly_dir: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-09-24_hybrid_mobsuite/mobsuite-hybrid-plasmid/assembly"
 
-# --- parameters ---------------------------------------------------------------
-primary_cluster_dist = 0.06
 
 # --- outputs -----------------------------------------------------------------
-output_dir: "output"
+output_dir: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-09-24_hybrid_mobsuite/mobsuite-hybrid-plasmid/output"
 log_dir: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-09-24_hybrid_mobsuite/mobsuite-hybrid-plasmid/logs"
-
-# --- taxonomy file for mob-cluster ------------------------------------------
-taxonomy_tsv: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-09-24_hybrid_mobsuite/mobsuite-hybrid-plasmid/meta/taxonomy.tsv"
 
 # --- mobsuite database ------------------------------------------------------
 mob_db: "/scratch/esnitkin_root/esnitkin1/tifwan/Project_MDHHS_genomics/2026-09-24_hybrid_mobsuite/mobsuite-hybrid-plasmid/database"

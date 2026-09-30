@@ -1,6 +1,9 @@
 database/
 .snakemake/
 logs/
+assembly/
+output/
+updated_db_output/
 slurm_out/
 slurm-*.out
 files.zip

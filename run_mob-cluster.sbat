@@ -22,9 +22,9 @@ module load snakemake Bioinformatics singularity mamba
 mkdir -p slurm_out
 
 # run snakemake
-snakemake -s workflow/mob_recon.smk -j 999 \
+snakemake -s workflow/mob_cluster.smk -j 999 \
   --use-singularity \
   --singularity-args "-B /nfs/turbo:/nfs/turbo -B /scratch:/scratch"\
   --cluster-config config/cluster.json \
   --cluster "sbatch -A {cluster.account} -p {cluster.partition} -N {cluster.nodes} -t {cluster.walltime} -c {cluster.procs} --mem-per-cpu {cluster.pmem} --output=slurm_out/slurm-%j.out" \
-  --configfile config/config.yaml --latency-wait 1000 --nolock 
+  --configfile config/config_cluster.yaml --latency-wait 1000 --nolock --forceall

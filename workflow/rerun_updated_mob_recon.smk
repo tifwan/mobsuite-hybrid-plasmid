@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import glob
 
-configfile: "config/config.yaml"
+configfile: "config/config_rerun.yaml"
 
 # ---- isolate list ----------------------------------------------------------
 
@@ -39,25 +39,9 @@ rule all:
                isolate=ISOLATES),
         # combined typing report
         OUTPUT_DIR + "/mob_typer.txt",
-        OUTPUT_DIR + "/contig_reports.txt",
-        config["mob_db"] + "/clusters.txt"
+        OUTPUT_DIR + "/contig_reports.txt"
 
 
-# ----mob_init----------------------------------------------------------------
-rule mob_init:
-    # One-time: download + initialize the MOB-suite database into a shared dir.
-    # All mob_recon jobs depend on this, so it runs exactly once before them.
-    output:
-        db_ready = config["mob_db"] + "/clusters.txt",
-    params:
-        db_dir = config["mob_db"],
-    log:
-        config["log_dir"] + "/mob_init_" + RUN_TIMESTAMP + ".log"
-    shell:
-        r"""
-        mkdir -p {params.db_dir}
-        mob_init -d {params.db_dir} > {log} 2>&1
-        """
 
 # ---- mob_recon -------------------------------------------------------------
 rule mob_recon:
@@ -75,12 +59,13 @@ rule mob_recon:
         outdir = OUTPUT_DIR + "/{isolate}/mob_recon",
         prefix = "{isolate}",
         mob_db = config["mob_db"],
+        primary_cluster_dist = config["primary_cluster_dist"], 
     log:
         config["log_dir"] + "/{isolate}/mob_recon_" + RUN_TIMESTAMP + ".log",
     shell:
         """
         mob_recon --infile {input.assembly} --outdir {params.outdir} -u  \
-            -d {params.mob_db} -s {params.prefix} --force > {log} 2>&1
+            -d {params.mob_db} -s {params.prefix} --primary_cluster_dist {params.primary_cluster_dist} --force > {log} 2>&1
         """
 
 
